@@ -1,0 +1,7 @@
+{
+  "name": "WhatsApp Bot Control Center",
+  "description": "A sophisticated dashboard to design, simulate, and manage AI-powered WhatsApp bots using Gemini API.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
