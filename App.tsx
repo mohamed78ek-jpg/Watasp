@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
@@ -8,16 +7,13 @@ import {
   Send, 
   WifiOff,
   Zap,
-  ShieldCheck,
   Search,
   MoreVertical,
   Users,
   Bell,
   Trash2,
-  CheckCircle,
   Power,
   Trash,
-  MessageCircle,
   Bot,
   Phone,
   Terminal,
@@ -128,7 +124,6 @@ const App: React.FC = () => {
 
     const currentText = inputText.trim();
     
-    // Command Processing Logic
     if (currentText.startsWith('/')) {
       processCommand(currentText);
       setInputText('');
