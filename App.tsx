@@ -104,7 +104,7 @@ const App: React.FC = () => {
       setSettings(prev => ({ ...prev, status: 'connecting' }));
       setTimeout(() => {
         setSettings(prev => ({ ...prev, status: 'online' }));
-        logCommand('Bot Linked to 0695 4757 82', 'success');
+        logCommand(`Bot Linked to ${settings.phoneNumber}`, 'success');
       }, 1500);
     } else {
       setSettings(prev => ({ ...prev, status: 'offline' }));
@@ -164,13 +164,15 @@ const App: React.FC = () => {
       if (matchedRule) {
         await new Promise(r => setTimeout(r, 1000));
         botResponseText = matchedRule.response;
-        logCommand(`Rule Trigged: ${matchedRule.trigger}`, 'success');
+        logCommand(`Rule Triggered: ${matchedRule.trigger}`, 'success');
       } else {
         const activeChat = chats.find(c => c.id === activeChatId);
-        const history = (activeChat?.messages || []).slice(-10).map(m => ({
-          role: m.sender === 'bot' ? 'model' : 'user' as any,
-          parts: [{ text: m.text }]
-        }));
+        const history = (activeChat?.messages || []).slice(-10)
+          .filter(m => m.sender !== 'system')
+          .map(m => ({
+            role: m.sender === 'bot' ? 'model' : 'user' as any,
+            parts: [{ text: m.text }]
+          }));
         botResponseText = await botBrain.getResponse(currentText, settings.persona, history);
       }
       
@@ -221,7 +223,7 @@ const App: React.FC = () => {
 
     const systemMsg: Message = {
       id: Date.now().toString(),
-      text: `[CineBot System]: ${response}`,
+      text: `[نظام الأوامر]: ${response}`,
       sender: 'system',
       timestamp: new Date()
     };
@@ -244,6 +246,7 @@ const App: React.FC = () => {
     };
     setRules([...rules, rule]);
     setNewRule({ trigger: '', response: '' });
+    logCommand(`Created Rule: ${rule.trigger}`, 'success');
   };
 
   const deleteRule = (id: string) => {
@@ -302,7 +305,6 @@ const App: React.FC = () => {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* HEADER */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
           <div className="flex items-center space-x-3 space-x-reverse">
             <h2 className="text-lg font-bold text-gray-800">
@@ -330,7 +332,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* CONTENT AREA */}
         <div className="flex-1 overflow-auto bg-[#f8fafb]">
           {activeTab === 'dashboard' && (
             <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -368,32 +369,14 @@ const App: React.FC = () => {
                         <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full font-bold">مفعل</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <span className="text-sm font-medium">الربط مع قواعد بيانات IMDb</span>
+                        <span className="text-sm font-medium">الربط مع قواعد بيانات الأفلام</span>
                         <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">نشط</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <span className="text-sm font-medium">حالة السيرفر (Render)</span>
-                        <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">مستقر</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                      <TrendingUp className="text-blue-500 ml-2" size={18} />
-                      التصنيفات الأكثر طلباً اليوم
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {['أكشن', 'غموض', 'خيال علمي', 'دراما كورية', 'وثائقي', 'رعب'].map((tag, i) => (
-                        <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium border border-gray-200">
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 flex flex-col overflow-hidden">
+                <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 flex flex-col overflow-hidden h-[400px]">
                   <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
                     <div className="flex items-center space-x-2 space-x-reverse text-indigo-400">
                       <Terminal size={16} />
@@ -414,12 +397,6 @@ const App: React.FC = () => {
                       ))
                     )}
                   </div>
-                  <div className="p-3 bg-black/40 border-t border-slate-800">
-                    <div className="flex items-center space-x-2 space-x-reverse text-[9px]">
-                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
-                      <span className="text-slate-400">استقبال الأوامر نشط</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -427,7 +404,6 @@ const App: React.FC = () => {
 
           {activeTab === 'chat' && (
             <div className="h-full flex overflow-hidden">
-              {/* CHAT LIST */}
               <div className="w-80 bg-white border-l border-gray-200 flex flex-col z-10">
                 <div className="p-4 border-b border-gray-100 bg-gray-50/50">
                   <div className="relative">
@@ -456,17 +432,13 @@ const App: React.FC = () => {
                           <span className="font-bold text-sm text-gray-800 truncate">{chat.contactName}</span>
                           <span className="text-[10px] text-gray-400">{chat.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
-                        <div className="text-xs text-gray-500 truncate flex items-center">
-                           {chat.unreadCount > 0 && <span className="w-2 h-2 bg-indigo-500 rounded-full ml-1 flex-shrink-0"></span>}
-                           {chat.lastMessage}
-                        </div>
+                        <div className="text-xs text-gray-500 truncate">{chat.lastMessage}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* SIMULATOR WINDOW */}
               <div className="flex-1 flex flex-col bg-[#efeae2] relative">
                 {activeChat ? (
                   <>
@@ -477,12 +449,8 @@ const App: React.FC = () => {
                         </div>
                         <div>
                           <div className="font-bold text-sm text-gray-800">{activeChat.contactName}</div>
-                          <div className="text-[10px] text-indigo-600 font-bold">يطلب توصية الآن</div>
+                          <div className="text-[10px] text-indigo-600 font-bold">نشط الآن</div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-4 space-x-reverse text-gray-500">
-                        <Search size={18} className="cursor-pointer hover:text-indigo-600" />
-                        <MoreVertical size={18} className="cursor-pointer hover:text-indigo-600" />
                       </div>
                     </header>
 
@@ -501,12 +469,7 @@ const App: React.FC = () => {
                               : 'bg-[#dcf8c6] self-end rounded-tl-none'
                           }`}
                         >
-                          <div className="pr-1 pl-4 leading-relaxed whitespace-pre-line text-gray-800">{msg.text}</div>
-                          {msg.sender !== 'system' && (
-                            <div className="text-[9px] text-gray-400 text-left mt-1">
-                              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          )}
+                          <div className="leading-relaxed whitespace-pre-line text-gray-800">{msg.text}</div>
                         </div>
                       ))}
                       {isTyping && (
@@ -521,26 +484,19 @@ const App: React.FC = () => {
                       <div ref={chatEndRef} />
                     </div>
 
-                    <div className="bg-[#f0f2f5] p-3 flex items-center space-x-3 border-t border-gray-200">
-                      <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-3 space-x-reverse">
-                        <button type="button" className="text-gray-500 hover:text-indigo-600 p-1">
-                          <Plus size={22} />
-                        </button>
+                    <div className="bg-[#f0f2f5] p-3 border-t border-gray-200">
+                      <form onSubmit={handleSendMessage} className="flex items-center space-x-3 space-x-reverse">
                         <input 
                           disabled={settings.status !== 'online'}
                           value={inputText}
                           onChange={(e) => setInputText(e.target.value)}
                           placeholder={settings.status === 'online' ? "اطلب توصية أو استخدم /أمر..." : "البوت مغلق"} 
-                          className="flex-1 bg-white px-4 py-2.5 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          className="flex-1 bg-white px-4 py-2.5 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm outline-none transition-all disabled:bg-gray-100"
                         />
                         <button 
                           disabled={!inputText.trim() || settings.status !== 'online'}
                           type="submit"
-                          className={`p-2.5 rounded-full transition-all shadow-md active:scale-95 ${
-                            inputText.trim() && settings.status === 'online' 
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                            : 'text-gray-400 bg-white'
-                          }`}
+                          className="bg-indigo-600 text-white p-2.5 rounded-full hover:bg-indigo-700 disabled:opacity-50"
                         >
                           <Send size={20} className="transform rotate-180" />
                         </button>
@@ -548,12 +504,9 @@ const App: React.FC = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white">
-                    <div className="bg-indigo-50 p-12 rounded-full mb-4 animate-bounce duration-[3000ms]">
-                      <Film size={64} className="text-indigo-200" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-800">CineBot Simulator</h3>
-                    <p className="text-sm">اختر محادثة لبدء اختبار الذكاء الاصطناعي السينمائي</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+                    <Film size={64} className="mb-4 opacity-20" />
+                    <p>اختر محادثة للبدء</p>
                   </div>
                 )}
               </div>
@@ -562,72 +515,45 @@ const App: React.FC = () => {
 
           {activeTab === 'rules' && (
             <div className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-indigo-50/30">
                   <h3 className="font-bold text-gray-800">إضافة رد تلقائي سينمائي</h3>
                   <Zap className="text-amber-500" size={20} />
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">الكلمة المفتاحية (Trigger)</label>
-                    <input 
-                      type="text" 
-                      value={newRule.trigger}
-                      onChange={(e) => setNewRule({...newRule, trigger: e.target.value})}
-                      placeholder="مثال: كوميدي، ترشيح، تقييم"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">الرد التلقائي (Response)</label>
-                    <input 
-                      type="text" 
-                      value={newRule.response}
-                      onChange={(e) => setNewRule({...newRule, response: e.target.value})}
-                      placeholder="اكتب رد الخبير السينمائي هنا"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <button 
-                      onClick={addRule}
-                      className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 space-x-reverse shadow-lg shadow-indigo-100"
-                    >
-                      <Plus size={18} />
-                      <span>حفظ القاعدة</span>
-                    </button>
-                  </div>
+                  <input 
+                    type="text" 
+                    value={newRule.trigger}
+                    onChange={(e) => setNewRule({...newRule, trigger: e.target.value})}
+                    placeholder="الكلمة المفتاحية (Trigger)"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <input 
+                    type="text" 
+                    value={newRule.response}
+                    onChange={(e) => setNewRule({...newRule, response: e.target.value})}
+                    placeholder="الرد التلقائي (Response)"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button 
+                    onClick={addRule}
+                    className="md:col-span-2 bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700"
+                  >
+                    حفظ القاعدة
+                  </button>
                 </div>
               </div>
-
+              
               <div className="space-y-4">
-                <h3 className="font-bold text-gray-800 px-2 flex items-center">
-                  <Heart className="text-rose-500 ml-2" size={18} />
-                  قواعد التوصيات النشطة ({rules.length})
-                </h3>
                 {rules.map(rule => (
-                  <div key={rule.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:border-indigo-200 transition-all group">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 space-x-reverse mb-1">
-                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">{rule.trigger}</span>
-                        <div className="h-px w-8 bg-gray-100"></div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{rule.response}</p>
+                  <div key={rule.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group">
+                    <div>
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg mr-2">{rule.trigger}</span>
+                      <p className="text-sm text-gray-600 mt-2">{rule.response}</p>
                     </div>
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                       <button 
-                        onClick={() => deleteRule(rule.id)}
-                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                      <div 
-                        onClick={() => setRules(rules.map(r => r.id === rule.id ? {...r, isActive: !r.isActive} : r))}
-                        className={`w-11 h-6 rounded-full relative cursor-pointer transition-all ${rule.isActive ? 'bg-indigo-500' : 'bg-gray-200'}`}
-                      >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${rule.isActive ? 'left-1' : 'right-1'}`}></div>
-                      </div>
-                    </div>
+                    <button onClick={() => deleteRule(rule.id)} className="text-gray-300 hover:text-red-500 p-2">
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -635,25 +561,15 @@ const App: React.FC = () => {
           )}
 
           {activeTab === 'settings' && (
-            <div className="p-8 max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-indigo-50/20">
-                  <div className="flex items-center space-x-3 space-x-reverse">
-                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
-                      <Tv size={20} />
-                    </div>
-                    <h3 className="font-bold text-gray-800">إعدادات الخبير السينمائي</h3>
-                  </div>
-                  <button className="bg-indigo-600 text-white text-sm font-bold px-6 py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">حفظ التغييرات</button>
-                </div>
-                <div className="p-8 space-y-6">
+            <div className="p-8 max-w-3xl mx-auto animate-in fade-in duration-500">
+               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">اسم البوت السينمائي</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">اسم البوت</label>
                     <input 
                       type="text" 
                       value={settings.name}
                       onChange={(e) => setSettings({...settings, name: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-gray-50/30 font-medium"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
@@ -662,48 +578,19 @@ const App: React.FC = () => {
                       type="text" 
                       value={settings.phoneNumber}
                       onChange={(e) => setSettings({...settings, phoneNumber: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-gray-50/30 font-mono"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">الخلفية المعرفية (Cinema Knowledge Base)</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">الخلفية المعرفية</label>
                     <textarea 
                       rows={5}
                       value={settings.persona}
                       onChange={(e) => setSettings({...settings, persona: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none bg-gray-50/30 leading-relaxed text-sm"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm"
                     />
                   </div>
-
-                  <div className="pt-4 grid grid-cols-2 gap-6">
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-800">النقد الذاتي</span>
-                        <div 
-                          onClick={() => setSettings({...settings, autoReply: !settings.autoReply})}
-                          className={`w-10 h-5 rounded-full relative cursor-pointer transition-all ${settings.autoReply ? 'bg-indigo-500' : 'bg-gray-300'}`}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.autoReply ? 'left-0.5' : 'right-0.5'}`}></div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-gray-500">تمكين البوت من إبداء رأيه الخاص في الأفلام وتفاصيل الإنتاج.</p>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-800">مستوى التحليل</span>
-                        <span className="text-xs font-bold text-indigo-600">{Math.round(settings.temperature * 100)}%</span>
-                      </div>
-                      <input 
-                        type="range" min="0" max="1" step="0.1" 
-                        value={settings.temperature}
-                        onChange={(e) => setSettings({...settings, temperature: parseFloat(e.target.value)})}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+               </div>
             </div>
           )}
         </div>

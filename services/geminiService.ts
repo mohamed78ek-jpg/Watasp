@@ -2,15 +2,9 @@
 import { GoogleGenAI } from "@google/genai";
 
 export class BotBrain {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-  }
-
   async getResponse(prompt: string, persona: string, history: { role: 'user' | 'model', parts: { text: string }[] }[]) {
     try {
-      // Re-initialize to ensure we use the latest injected API key
+      // Create a new instance right before the call to ensure it uses the current API key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       
       const response = await ai.models.generateContent({
@@ -20,15 +14,19 @@ export class BotBrain {
           { role: 'user', parts: [{ text: prompt }] }
         ],
         config: {
-          systemInstruction: `You are a WhatsApp bot. ${persona}. Keep responses concise and use emojis where appropriate. Respond in the same language as the user.`,
-          temperature: 0.7,
+          systemInstruction: `أنت بوت واتساب سينمائي متخصص. ${persona}. اجعل الردود قصيرة ومفيدة واستخدم الرموز التعبيرية السينمائية. أجب بنفس لغة المستخدم.`,
+          temperature: 0.8,
         }
       });
 
-      return response.text || "I'm sorry, I couldn't process that.";
-    } catch (error) {
+      // Directly access .text property as per guidelines
+      return response.text || "عذراً، لم أتمكن من معالجة طلبك حالياً.";
+    } catch (error: any) {
       console.error("Gemini Error:", error);
-      return "System Error: Unable to reach the bot brain.";
+      if (error?.message?.includes("Requested entity was not found")) {
+        return "خطأ: مفتاح API غير صالح أو غير مفعل. يرجى التحقق من الإعدادات.";
+      }
+      return "خطأ في النظام: تعذر الوصول إلى عقل البوت.";
     }
   }
 }
