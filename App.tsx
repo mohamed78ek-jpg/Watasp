@@ -7,7 +7,6 @@ import {
   Plus, 
   Send, 
   WifiOff,
-  User,
   Zap,
   ShieldCheck,
   Search,
@@ -19,53 +18,64 @@ import {
   Power,
   Trash,
   MessageCircle,
-  Bot
+  Bot,
+  Phone,
+  Terminal,
+  Activity,
+  Film,
+  Star,
+  Clapperboard,
+  Tv,
+  TrendingUp,
+  Heart
 } from 'lucide-react';
-import { BotSettings, ChatSession, Message, AutomationRule } from './types';
+import { BotSettings, ChatSession, Message, AutomationRule, CommandLog } from './types';
 import { botBrain } from './services/geminiService';
 
 const INITIAL_SETTINGS: BotSettings = {
-  name: "المساعد الذكي (Smart Bot)",
-  persona: "أنت خبير خدمة عملاء لمتجر إلكتروني سعودي. أسلوبك مهذب، سريع، وودود. تستخدم اللهجة السعودية البيضاء والرموز التعبيرية.",
+  name: "سيني بوت (CineBot) 🎬",
+  phoneNumber: "0695 4757 82",
+  persona: "أنت خبير سينمائي وموسوعة أفلام عالمية. مهمتك مساعدة المستخدمين في اختيار الأفلام والمسلسلات، تقديم ملخصات بدون حرق، وتزويدهم بالتقييمات. أسلوبك مشوق، فني، ودود، وتستخدم الرموز التعبيرية السينمائية.",
   status: 'offline',
   autoReply: true,
-  temperature: 0.7
+  temperature: 0.8
 };
 
 const INITIAL_CHATS: ChatSession[] = [
   {
     id: '1',
-    contactName: 'عبدالرحمن محمد',
-    lastMessage: 'أهلاً، متوفر عندكم توصيل للرياض؟',
+    contactName: 'أحمد علي',
+    lastMessage: 'أبحث عن فيلم رعب قوي لنهاية الأسبوع؟',
     timestamp: new Date(),
     unreadCount: 1,
     messages: [
-      { id: 'm1', text: 'مرحباً، كيف يمكنني مساعدتك؟', sender: 'bot', timestamp: new Date(Date.now() - 100000) },
-      { id: 'm2', text: 'أهلاً، متوفر عندكم توصيل للرياض؟', sender: 'user', timestamp: new Date() }
+      { id: 'm1', text: 'مرحباً بك في سيني بوت! هل تبحث عن سهرة سينمائية اليوم؟ 🍿', sender: 'bot', timestamp: new Date(Date.now() - 100000) },
+      { id: 'm2', text: 'أهلاً، أبحث عن فيلم رعب قوي لنهاية الأسبوع؟', sender: 'user', timestamp: new Date() }
     ]
   },
   {
     id: '2',
-    contactName: 'نورة السعيد',
-    lastMessage: 'شكراً جزيلاً لك',
+    contactName: 'سارة خالد',
+    lastMessage: 'إيش رأيك في فيلم Oppenheimer؟',
     timestamp: new Date(Date.now() - 3600000),
     unreadCount: 0,
     messages: [
-      { id: 'n1', text: 'طلبي وصل، شكراً جزيلاً لك', sender: 'user', timestamp: new Date(Date.now() - 3600000) }
+      { id: 'n1', text: 'إيش رأيك في فيلم Oppenheimer؟ ينفع أشوفه مع العائلة؟', sender: 'user', timestamp: new Date(Date.now() - 3600000) }
     ]
   }
 ];
 
 const INITIAL_RULES: AutomationRule[] = [
-  { id: 'r1', trigger: 'السلام', response: 'وعليكم السلام ورحمة الله وبركاته! كيف أقدر أخدمك اليوم؟ 🌸', isActive: true },
-  { id: 'r2', trigger: 'سعر', response: 'أسعارنا تبدأ من 100 ريال وتختلف حسب المنتج. تقدر تشوف الكتالوج في الرابط...', isActive: true }
+  { id: 'r1', trigger: 'أفضل فيلم', response: 'حسب التصنيفات العالمية، فيلم (The Godfather) يتصدر القائمة، لكن لو تحب شيء حديث ففيلم (Oppenheimer) أو (Interstellar) خيارات أسطورية! 📽️✨', isActive: true },
+  { id: 'r2', trigger: 'تقييم', response: 'أنا هنا لخدمتك! أعطني اسم الفيلم وسأزودك بتقييمه في IMDb و Rotten Tomatoes فوراً. ⭐️', isActive: true },
+  { id: 'r3', trigger: 'أكشن', response: 'لعشاق الأدرينالين! أرشح لك سلسلة John Wick أو فيلم Mad Max: Fury Road. استعد للحماس! 🔥🎬', isActive: true }
 ];
 
 const SidebarItem = ({ icon: Icon, label, active, onClick }: any) => (
   <button 
     onClick={onClick}
     className={`flex items-center space-x-3 w-full p-3 rounded-xl transition-all duration-200 ${
-      active ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-600'
+      active ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'
     }`}
   >
     <Icon size={20} />
@@ -82,6 +92,7 @@ const App: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [rules, setRules] = useState<AutomationRule[]>(INITIAL_RULES);
   const [newRule, setNewRule] = useState({ trigger: '', response: '' });
+  const [commandLogs, setCommandLogs] = useState<CommandLog[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,10 +104,22 @@ const App: React.FC = () => {
       setSettings(prev => ({ ...prev, status: 'connecting' }));
       setTimeout(() => {
         setSettings(prev => ({ ...prev, status: 'online' }));
+        logCommand('Bot Linked to 0695 4757 82', 'success');
       }, 1500);
     } else {
       setSettings(prev => ({ ...prev, status: 'offline' }));
+      logCommand('CineBot Shutdown', 'success');
     }
+  };
+
+  const logCommand = (cmd: string, status: 'success' | 'failed') => {
+    const newLog: CommandLog = {
+      id: Date.now().toString(),
+      command: cmd,
+      status,
+      timestamp: new Date()
+    };
+    setCommandLogs(prev => [newLog, ...prev].slice(0, 10));
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -104,6 +127,14 @@ const App: React.FC = () => {
     if (!inputText.trim() || !activeChatId || settings.status !== 'online') return;
 
     const currentText = inputText.trim();
+    
+    // Command Processing Logic
+    if (currentText.startsWith('/')) {
+      processCommand(currentText);
+      setInputText('');
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: currentText,
@@ -127,14 +158,13 @@ const App: React.FC = () => {
 
     if (settings.autoReply) {
       setIsTyping(true);
-      
       const matchedRule = rules.find(r => r.isActive && currentText.toLowerCase().includes(r.trigger.toLowerCase()));
-      
       let botResponseText = "";
       
       if (matchedRule) {
         await new Promise(r => setTimeout(r, 1000));
         botResponseText = matchedRule.response;
+        logCommand(`Rule Trigged: ${matchedRule.trigger}`, 'success');
       } else {
         const activeChat = chats.find(c => c.id === activeChatId);
         const history = (activeChat?.messages || []).slice(-10).map(m => ({
@@ -166,6 +196,44 @@ const App: React.FC = () => {
     }
   };
 
+  const processCommand = (cmd: string) => {
+    const parts = cmd.toLowerCase().split(' ');
+    const command = parts[0];
+    let response = "";
+
+    switch(command) {
+      case '/status':
+        response = `حالة البوت السينمائي: ${settings.status === 'online' ? 'جاهز للعرض ✅' : 'في الكواليس ❌'}`;
+        logCommand('Status Check', 'success');
+        break;
+      case '/info':
+        response = `🎬 اسم البوت: ${settings.name}\n📞 الرقم المرتبط: ${settings.phoneNumber}\n🌟 الشخصية: خبير أفلام\n📊 عدد قواعد الأتمتة: ${rules.length}`;
+        logCommand('Bot Info Command', 'success');
+        break;
+      case '/recommend':
+        response = "جرب مشاهدة فيلم (The Prestige) للمخرج نولان، فيلم يجمع بين الغموض والإثارة بطريقة عبقرية!";
+        logCommand('Quick Recommendation', 'success');
+        break;
+      default:
+        response = "أمر غير معروف. جرب /info أو /status أو /recommend";
+        logCommand(`Unknown Command: ${cmd}`, 'failed');
+    }
+
+    const systemMsg: Message = {
+      id: Date.now().toString(),
+      text: `[CineBot System]: ${response}`,
+      sender: 'system',
+      timestamp: new Date()
+    };
+
+    setChats(prev => prev.map(chat => {
+      if (chat.id === activeChatId) {
+        return { ...chat, messages: [...chat.messages, systemMsg], lastMessage: response, timestamp: new Date() };
+      }
+      return chat;
+    }));
+  };
+
   const addRule = () => {
     if (!newRule.trigger || !newRule.response) return;
     const rule: AutomationRule = {
@@ -185,41 +253,48 @@ const App: React.FC = () => {
   const activeChat = chats.find(c => c.id === activeChatId);
 
   return (
-    <div className="flex h-screen bg-[#f0f2f5] font-sans selection:bg-emerald-200" dir="rtl">
+    <div className="flex h-screen bg-[#f0f2f5] font-sans selection:bg-indigo-200" dir="rtl">
       {/* SIDEBAR */}
       <aside className="w-64 bg-white border-l border-gray-200 flex flex-col p-4 shadow-sm z-20">
         <div className="flex items-center space-x-2 space-x-reverse px-2 mb-10">
-          <div className="bg-emerald-600 p-2 rounded-xl text-white rotate-12 transition-transform">
-            <Bot size={22} fill="white" />
+          <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-lg transition-transform hover:scale-110">
+            <Film size={22} fill="white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-gray-800">
-            واتساب<span className="text-emerald-600">بوت</span>
+            سيني<span className="text-indigo-600">بوت</span>
           </span>
         </div>
 
         <nav className="flex-1 space-y-1.5">
           <SidebarItem icon={LayoutDashboard} label="لوحة التحكم" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <SidebarItem icon={MessageSquare} label="محاكي الدردشة" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
-          <SidebarItem icon={Zap} label="قواعد الأتمتة" active={activeTab === 'rules'} onClick={() => setActiveTab('rules')} />
-          <SidebarItem icon={Settings} label="الإعدادات" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+          <SidebarItem icon={MessageSquare} label="محاكي السينما" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
+          <SidebarItem icon={Zap} label="أتمتة الأفلام" active={activeTab === 'rules'} onClick={() => setActiveTab('rules')} />
+          <SidebarItem icon={Settings} label="إعدادات البوت" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
         </nav>
 
         <div className="mt-auto pt-6 border-t border-gray-100">
-          <div className={`p-4 rounded-2xl transition-all ${settings.status === 'online' ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100'}`}>
+          <div className={`p-4 rounded-2xl transition-all ${settings.status === 'online' ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-50 border border-gray-100'}`}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">حالة البوت</span>
-              <div className={`w-2.5 h-2.5 rounded-full ${settings.status === 'online' ? 'bg-emerald-500 animate-pulse' : settings.status === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">حالة البث</span>
+              <div className={`w-2.5 h-2.5 rounded-full ${settings.status === 'online' ? 'bg-indigo-500 animate-pulse' : settings.status === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-400'}`}></div>
+            </div>
+            <div className="mb-3">
+                <div className="text-sm font-bold text-gray-800 truncate">{settings.name}</div>
+                <div className="text-[10px] text-gray-500 flex items-center mt-0.5 font-mono">
+                    <Phone size={10} className="ml-1 text-indigo-600" />
+                    {settings.phoneNumber}
+                </div>
             </div>
             <button 
               onClick={toggleConnection}
               className={`w-full py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 space-x-reverse ${
                 settings.status === 'online' 
-                ? 'bg-white text-emerald-600 border border-emerald-200 hover:bg-emerald-100' 
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                ? 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-100' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
               }`}
             >
               {settings.status === 'online' ? <WifiOff size={14} /> : <Power size={14} />}
-              <span>{settings.status === 'online' ? 'إيقاف التشغيل' : settings.status === 'connecting' ? 'جاري الاتصال...' : 'بدء الاتصال'}</span>
+              <span>{settings.status === 'online' ? 'إيقاف التشغيل' : settings.status === 'connecting' ? 'جاري الاتصال...' : 'بدء العرض'}</span>
             </button>
           </div>
         </div>
@@ -229,16 +304,24 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* HEADER */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
-          <h2 className="text-lg font-bold text-gray-800">
-            {activeTab === 'dashboard' && 'لوحة التحكم العامة'}
-            {activeTab === 'chat' && 'محاكي الواتساب'}
-            {activeTab === 'rules' && 'إدارة الأتمتة'}
-            {activeTab === 'settings' && 'الإعدادات المتقدمة'}
-          </h2>
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <h2 className="text-lg font-bold text-gray-800">
+              {activeTab === 'dashboard' && 'الإحصائيات السينمائية'}
+              {activeTab === 'chat' && 'محاكي الدردشة السينمائية'}
+              {activeTab === 'rules' && 'أتمتة التوصيات'}
+              {activeTab === 'settings' && 'إعدادات الخبير'}
+            </h2>
+            {settings.status === 'online' && (
+              <span className="flex items-center bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                <Activity size={10} className="ml-1" />
+                نشط على {settings.phoneNumber}
+              </span>
+            )}
+          </div>
           <div className="flex items-center space-x-4 space-x-reverse">
              <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                <Users size={14} className="text-gray-400 ml-2" />
-                <span className="text-xs font-medium text-gray-600">1,204 مشترك</span>
+                <Star size={14} className="text-amber-400 ml-2" />
+                <span className="text-xs font-medium text-gray-600">4.9/5 متوسط التقييم</span>
              </div>
              <div className="relative">
                <Bell size={18} className="text-gray-500 cursor-pointer" />
@@ -253,59 +336,88 @@ const App: React.FC = () => {
             <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
-                  { label: 'إجمالي الرسائل', value: '12,482', change: '+14%', color: 'emerald' },
-                  { label: 'العملاء النشطون', value: '842', change: '+5%', color: 'blue' },
-                  { label: 'دقة الرد الآلي', value: '98.2%', change: '+0.4%', color: 'amber' },
-                  { label: 'سرعة الاستجابة', value: '1.2s', change: '-0.3s', color: 'purple' },
+                  { label: 'توصيات مقدمة', value: '3,842', change: '+12%', icon: Film },
+                  { label: 'أوامر مستلمة', value: commandLogs.length.toString(), change: 'Live', icon: Terminal },
+                  { label: 'مستخدمين نشطين', value: '1,204', change: '+8%', icon: Users },
+                  { label: 'أفلام تم تقييمها', value: '542', change: '+24', icon: Star },
                 ].map((stat, i) => (
                   <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
+                    <div className="flex justify-between items-start mb-2">
+                       <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
+                       <stat.icon size={18} className="text-indigo-400" />
+                    </div>
                     <div className="text-sm text-gray-400 font-medium mb-1">{stat.label}</div>
-                    <div className="text-xs font-bold text-emerald-500">{stat.change} من الأسبوع الماضي</div>
+                    <div className="text-xs font-bold text-indigo-500">{stat.change}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <CheckCircle className="text-emerald-500 ml-2" size={18} />
-                    حالة الأنظمة الحالية
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <span className="text-sm font-medium">محرك الذكاء الاصطناعي (Gemini)</span>
-                      <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">نشط</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                      <Clapperboard className="text-indigo-500 ml-2" size={18} />
+                      نظام التوصيات الذكي (Gemini 2.5)
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                      البوت مرتبط برقم الواتساب <span className="font-mono text-indigo-600 font-bold">{settings.phoneNumber}</span> ويقوم بمعالجة طلبات الأفلام والمسلسلات في ثوانٍ معدودة.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                        <span className="text-sm font-medium">مستقبل الأوامر المباشر</span>
+                        <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full font-bold">مفعل</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <span className="text-sm font-medium">الربط مع قواعد بيانات IMDb</span>
+                        <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">نشط</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <span className="text-sm font-medium">حالة السيرفر (Render)</span>
+                        <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">مستقر</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <span className="text-sm font-medium">قواعد الأتمتة المخصصة</span>
-                      <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">{rules.length} قواعد</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <span className="text-sm font-medium">الاتصال برقم الواتساب</span>
-                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${settings.status === 'online' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                        {settings.status === 'online' ? 'متصل' : 'غير متصل'}
-                      </span>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                      <TrendingUp className="text-blue-500 ml-2" size={18} />
+                      التصنيفات الأكثر طلباً اليوم
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {['أكشن', 'غموض', 'خيال علمي', 'دراما كورية', 'وثائقي', 'رعب'].map((tag, i) => (
+                        <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium border border-gray-200">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <ShieldCheck className="text-blue-500 ml-2" size={18} />
-                    إحصائيات الأمان والخصوصية
-                  </h3>
-                  <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                    جميع محادثاتك مشفرة ومؤمنة بالكامل. يتم معالجة البيانات عبر بروتوكولات آمنة لضمان عدم تسريب بيانات العملاء.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 border border-gray-100 rounded-xl text-center">
-                      <div className="text-xl font-bold text-gray-800">100%</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase">تشفير تام</div>
+                <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 flex flex-col overflow-hidden">
+                  <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+                    <div className="flex items-center space-x-2 space-x-reverse text-indigo-400">
+                      <Terminal size={16} />
+                      <span className="text-xs font-bold uppercase tracking-widest">تتبع الأوامر المباشرة</span>
                     </div>
-                    <div className="p-3 border border-gray-100 rounded-xl text-center">
-                      <div className="text-xl font-bold text-gray-800">24/7</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase">مراقبة النظام</div>
+                  </div>
+                  <div className="flex-1 p-4 font-mono text-[10px] overflow-y-auto space-y-2">
+                    {commandLogs.length === 0 ? (
+                      <div className="text-slate-600 italic">بانتظار استقبال أوامر على {settings.phoneNumber}...</div>
+                    ) : (
+                      commandLogs.map(log => (
+                        <div key={log.id} className="animate-in fade-in slide-in-from-right-1">
+                          <span className="text-slate-500">[{log.timestamp.toLocaleTimeString()}]</span>{' '}
+                          <span className={log.status === 'success' ? 'text-indigo-400' : 'text-rose-400'}>
+                            {log.status === 'success' ? '>' : '!'} {log.command}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-3 bg-black/40 border-t border-slate-800">
+                    <div className="flex items-center space-x-2 space-x-reverse text-[9px]">
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
+                      <span className="text-slate-400">استقبال الأوامر نشط</span>
                     </div>
                   </div>
                 </div>
@@ -323,7 +435,7 @@ const App: React.FC = () => {
                     <input 
                       type="text" 
                       placeholder="البحث في المحادثات..." 
-                      className="w-full pr-10 pl-4 py-2 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 text-sm transition-all"
+                      className="w-full pr-10 pl-4 py-2 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 text-sm transition-all outline-none"
                     />
                   </div>
                 </div>
@@ -333,10 +445,10 @@ const App: React.FC = () => {
                       key={chat.id}
                       onClick={() => setActiveChatId(chat.id)}
                       className={`p-4 flex items-center space-x-3 space-x-reverse cursor-pointer transition-all border-b border-gray-50 ${
-                        activeChatId === chat.id ? 'bg-emerald-50' : 'hover:bg-gray-50'
+                        activeChatId === chat.id ? 'bg-indigo-50 border-r-4 border-indigo-600' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <div className="h-12 w-12 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center font-bold text-emerald-600 border-2 border-white shadow-sm">
+                      <div className="h-12 w-12 rounded-full bg-indigo-100 flex-shrink-0 flex items-center justify-center font-bold text-indigo-600 border-2 border-white shadow-sm">
                         {chat.contactName.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -345,7 +457,7 @@ const App: React.FC = () => {
                           <span className="text-[10px] text-gray-400">{chat.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                         <div className="text-xs text-gray-500 truncate flex items-center">
-                           {chat.unreadCount > 0 && <span className="w-2 h-2 bg-emerald-500 rounded-full ml-1 flex-shrink-0"></span>}
+                           {chat.unreadCount > 0 && <span className="w-2 h-2 bg-indigo-500 rounded-full ml-1 flex-shrink-0"></span>}
                            {chat.lastMessage}
                         </div>
                       </div>
@@ -360,69 +472,73 @@ const App: React.FC = () => {
                   <>
                     <header className="h-16 bg-[#f0f2f5] px-6 flex items-center justify-between border-b border-gray-200 shadow-sm z-10">
                       <div className="flex items-center space-x-3 space-x-reverse">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center font-bold text-white shadow-sm">
+                        <div className="h-10 w-10 rounded-full bg-gray-400 flex items-center justify-center font-bold text-white shadow-sm">
                           {activeChat.contactName.charAt(0)}
                         </div>
                         <div>
                           <div className="font-bold text-sm text-gray-800">{activeChat.contactName}</div>
-                          <div className="text-[10px] text-emerald-600 font-bold">متصل الآن</div>
+                          <div className="text-[10px] text-indigo-600 font-bold">يطلب توصية الآن</div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4 space-x-reverse text-gray-500">
-                        <Search size={18} className="cursor-pointer hover:text-emerald-600" />
-                        <MoreVertical size={18} className="cursor-pointer hover:text-emerald-600" />
+                        <Search size={18} className="cursor-pointer hover:text-indigo-600" />
+                        <MoreVertical size={18} className="cursor-pointer hover:text-indigo-600" />
                       </div>
                     </header>
 
                     <div 
-                      className="flex-1 overflow-y-auto p-6 space-y-3 flex flex-col"
+                      className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col"
                       style={{backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', backgroundSize: 'contain'}}
                     >
                       {activeChat.messages.map(msg => (
                         <div 
                           key={msg.id} 
-                          className={`max-w-[75%] px-3 py-1.5 rounded-xl text-sm shadow-sm relative animate-in slide-in-from-bottom-2 duration-300 ${
+                          className={`max-w-[80%] px-3 py-2 rounded-xl text-sm shadow-sm relative animate-in slide-in-from-bottom-2 duration-300 ${
                             msg.sender === 'bot' 
-                              ? 'bg-white self-start rounded-tr-none' 
+                              ? 'bg-white self-start rounded-tr-none border-l-4 border-indigo-500' 
+                              : msg.sender === 'system'
+                              ? 'bg-slate-900 text-indigo-400 self-center rounded-lg text-center font-mono border border-slate-700 text-[11px] py-1 px-4'
                               : 'bg-[#dcf8c6] self-end rounded-tl-none'
                           }`}
                         >
-                          <div className="pr-1 pl-6 leading-relaxed text-gray-800">{msg.text}</div>
-                          <div className="text-[9px] text-gray-400 text-left mt-1">
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
+                          <div className="pr-1 pl-4 leading-relaxed whitespace-pre-line text-gray-800">{msg.text}</div>
+                          {msg.sender !== 'system' && (
+                            <div className="text-[9px] text-gray-400 text-left mt-1">
+                              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {isTyping && (
-                        <div className="bg-white self-start px-4 py-2 rounded-xl rounded-tr-none shadow-sm animate-pulse">
+                        <div className="bg-white self-start px-4 py-2 rounded-xl rounded-tr-none shadow-sm animate-pulse border-l-4 border-indigo-500">
                           <div className="flex space-x-1 space-x-reverse">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                            <div className="w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
+                            <div className="w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
+                            <div className="w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
                           </div>
                         </div>
                       )}
                       <div ref={chatEndRef} />
                     </div>
 
-                    <div className="bg-[#f0f2f5] p-3 flex items-center space-x-3 space-x-reverse border-t border-gray-200">
+                    <div className="bg-[#f0f2f5] p-3 flex items-center space-x-3 border-t border-gray-200">
                       <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-3 space-x-reverse">
-                        <button type="button" className="text-gray-500 hover:text-emerald-600 p-1">
+                        <button type="button" className="text-gray-500 hover:text-indigo-600 p-1">
                           <Plus size={22} />
                         </button>
                         <input 
                           disabled={settings.status !== 'online'}
                           value={inputText}
                           onChange={(e) => setInputText(e.target.value)}
-                          placeholder={settings.status === 'online' ? "اكتب رسالة..." : "البوت غير متصل"} 
-                          className="flex-1 bg-white px-4 py-2.5 rounded-xl border-none focus:ring-1 focus:ring-emerald-500 text-sm shadow-sm outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          placeholder={settings.status === 'online' ? "اطلب توصية أو استخدم /أمر..." : "البوت مغلق"} 
+                          className="flex-1 bg-white px-4 py-2.5 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                         <button 
                           disabled={!inputText.trim() || settings.status !== 'online'}
                           type="submit"
                           className={`p-2.5 rounded-full transition-all shadow-md active:scale-95 ${
                             inputText.trim() && settings.status === 'online' 
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
                             : 'text-gray-400 bg-white'
                           }`}
                         >
@@ -433,11 +549,11 @@ const App: React.FC = () => {
                   </>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white">
-                    <div className="bg-emerald-50 p-8 rounded-full mb-4">
-                      <MessageCircle size={64} className="text-emerald-200" />
+                    <div className="bg-indigo-50 p-12 rounded-full mb-4 animate-bounce duration-[3000ms]">
+                      <Film size={64} className="text-indigo-200" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800">ابدأ المحاكاة</h3>
-                    <p className="text-sm">اختر جهة اتصال من القائمة اليمنى لاختبار ردود البوت</p>
+                    <h3 className="text-xl font-bold text-gray-800">CineBot Simulator</h3>
+                    <p className="text-sm">اختر محادثة لبدء اختبار الذكاء الاصطناعي السينمائي</p>
                   </div>
                 )}
               </div>
@@ -447,8 +563,8 @@ const App: React.FC = () => {
           {activeTab === 'rules' && (
             <div className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50/30">
-                  <h3 className="font-bold text-gray-800">إضافة قاعدة رد تلقائي جديدة</h3>
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-indigo-50/30">
+                  <h3 className="font-bold text-gray-800">إضافة رد تلقائي سينمائي</h3>
                   <Zap className="text-amber-500" size={20} />
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -458,40 +574,43 @@ const App: React.FC = () => {
                       type="text" 
                       value={newRule.trigger}
                       onChange={(e) => setNewRule({...newRule, trigger: e.target.value})}
-                      placeholder="مثال: سعر، توصيل، السلام"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      placeholder="مثال: كوميدي، ترشيح، تقييم"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">نص الرد (Response)</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">الرد التلقائي (Response)</label>
                     <input 
                       type="text" 
                       value={newRule.response}
                       onChange={(e) => setNewRule({...newRule, response: e.target.value})}
-                      placeholder="اكتب الرد الذي سيصل للعميل"
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      placeholder="اكتب رد الخبير السينمائي هنا"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     />
                   </div>
                   <div className="md:col-span-2">
                     <button 
                       onClick={addRule}
-                      className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center space-x-2 space-x-reverse"
+                      className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 space-x-reverse shadow-lg shadow-indigo-100"
                     >
                       <Plus size={18} />
-                      <span>إضافة القاعدة</span>
+                      <span>حفظ القاعدة</span>
                     </button>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-bold text-gray-800 px-2">القواعد الحالية ({rules.length})</h3>
+                <h3 className="font-bold text-gray-800 px-2 flex items-center">
+                  <Heart className="text-rose-500 ml-2" size={18} />
+                  قواعد التوصيات النشطة ({rules.length})
+                </h3>
                 {rules.map(rule => (
-                  <div key={rule.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:border-emerald-200 transition-all group">
+                  <div key={rule.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:border-indigo-200 transition-all group">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 space-x-reverse mb-1">
-                        <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">{rule.trigger}</span>
-                        <div className="h-px w-8 bg-gray-200"></div>
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">{rule.trigger}</span>
+                        <div className="h-px w-8 bg-gray-100"></div>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">{rule.response}</p>
                     </div>
@@ -504,9 +623,9 @@ const App: React.FC = () => {
                       </button>
                       <div 
                         onClick={() => setRules(rules.map(r => r.id === rule.id ? {...r, isActive: !r.isActive} : r))}
-                        className={`w-11 h-6 rounded-full relative cursor-pointer transition-all ${rule.isActive ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                        className={`w-11 h-6 rounded-full relative cursor-pointer transition-all ${rule.isActive ? 'bg-indigo-500' : 'bg-gray-200'}`}
                       >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${rule.isActive ? 'left-1' : 'right-1'}`}></div>
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${rule.isActive ? 'left-1' : 'right-1'}`}></div>
                       </div>
                     </div>
                   </div>
@@ -518,82 +637,72 @@ const App: React.FC = () => {
           {activeTab === 'settings' && (
             <div className="p-8 max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-indigo-50/20">
                   <div className="flex items-center space-x-3 space-x-reverse">
-                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
-                      <Settings size={20} />
+                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
+                      <Tv size={20} />
                     </div>
-                    <h3 className="font-bold text-gray-800">إعدادات شخصية البوت</h3>
+                    <h3 className="font-bold text-gray-800">إعدادات الخبير السينمائي</h3>
                   </div>
-                  <button className="text-emerald-600 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-emerald-50 transition-all">حفظ التغييرات</button>
+                  <button className="bg-indigo-600 text-white text-sm font-bold px-6 py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">حفظ التغييرات</button>
                 </div>
                 <div className="p-8 space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">اسم البوت (يظهر للعملاء)</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">اسم البوت السينمائي</label>
                     <input 
                       type="text" 
                       value={settings.name}
                       onChange={(e) => setSettings({...settings, name: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-gray-50/30"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-gray-50/30 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">تعليمات الذكاء الاصطناعي (System Prompt)</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">الرقم المرتبط بالأوامر</label>
+                    <input 
+                      type="text" 
+                      value={settings.phoneNumber}
+                      onChange={(e) => setSettings({...settings, phoneNumber: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-gray-50/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">الخلفية المعرفية (Cinema Knowledge Base)</label>
                     <textarea 
                       rows={5}
                       value={settings.persona}
                       onChange={(e) => setSettings({...settings, persona: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all resize-none bg-gray-50/30 leading-relaxed text-sm"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none bg-gray-50/30 leading-relaxed text-sm"
                     />
-                    <p className="mt-3 text-[11px] text-gray-400 bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200">
-                      هذا النص يحدد "شخصية" البوت وكيفية تعامله مع العملاء. يمكنك تحديد نبرة الصوت، اللهجة، والمهام الموكلة إليه بدقة.
-                    </p>
                   </div>
 
                   <div className="pt-4 grid grid-cols-2 gap-6">
                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-800">الرد التلقائي</span>
+                        <span className="text-sm font-bold text-gray-800">النقد الذاتي</span>
                         <div 
                           onClick={() => setSettings({...settings, autoReply: !settings.autoReply})}
-                          className={`w-10 h-5 rounded-full relative cursor-pointer transition-all ${settings.autoReply ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                          className={`w-10 h-5 rounded-full relative cursor-pointer transition-all ${settings.autoReply ? 'bg-indigo-500' : 'bg-gray-300'}`}
                         >
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${settings.autoReply ? 'left-0.5' : 'right-0.5'}`}></div>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.autoReply ? 'left-0.5' : 'right-0.5'}`}></div>
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-500">تمكين البوت من الرد على الرسائل تلقائياً باستخدام القواعد والذكاء الاصطناعي.</p>
+                      <p className="text-[10px] text-gray-500">تمكين البوت من إبداء رأيه الخاص في الأفلام وتفاصيل الإنتاج.</p>
                     </div>
 
                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-800">درجة الإبداع (Temp)</span>
-                        <span className="text-xs font-bold text-emerald-600">{settings.temperature}</span>
+                        <span className="text-sm font-bold text-gray-800">مستوى التحليل</span>
+                        <span className="text-xs font-bold text-indigo-600">{Math.round(settings.temperature * 100)}%</span>
                       </div>
                       <input 
                         type="range" min="0" max="1" step="0.1" 
                         value={settings.temperature}
                         onChange={(e) => setSettings({...settings, temperature: parseFloat(e.target.value)})}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                       />
-                      <p className="text-[10px] text-gray-500 mt-1">القيم الأعلى تجعل البوت أكثر إبداعاً وعشوائية، والأقل تجعله أكثر دقة وتركيزاً.</p>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-red-50 p-6 rounded-3xl border border-red-100 flex items-center justify-between group hover:bg-red-100/50 transition-all">
-                <div className="flex items-center space-x-4 space-x-reverse">
-                  <div className="p-3 bg-white text-red-500 rounded-2xl shadow-sm border border-red-50">
-                    <Trash size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-red-800">حذف جميع البيانات</h4>
-                    <p className="text-xs text-red-600/70">سيتم مسح جميع المحادثات، القواعد، والإعدادات نهائياً.</p>
-                  </div>
-                </div>
-                <button className="bg-white text-red-600 px-6 py-2.5 rounded-xl font-bold border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm">
-                  مسح شامل
-                </button>
               </div>
             </div>
           )}

@@ -2,12 +2,13 @@
 export interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'system';
   timestamp: Date;
 }
 
 export interface BotSettings {
   name: string;
+  phoneNumber?: string;
   persona: string;
   status: 'online' | 'offline' | 'connecting';
   autoReply: boolean;
@@ -21,12 +22,11 @@ export interface AutomationRule {
   isActive: boolean;
 }
 
-export interface Contact {
+export interface CommandLog {
   id: string;
-  name: string;
-  phone: string;
-  lastSeen: string;
-  avatar?: string;
+  command: string;
+  status: 'success' | 'failed';
+  timestamp: Date;
 }
 
 export interface ChatSession {
